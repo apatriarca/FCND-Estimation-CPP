@@ -161,6 +161,14 @@ VectorXf QuadEstimatorEKF::PredictState(VectorXf curState, float dt, V3F accel, 
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
 
+  V3F rotAccel = attitude.Rotate_BtoI(accel);
+
+  predictedState(0) = curState(0) + curState(3) * dt;
+  predictedState(1) = curState(1) + curState(4) * dt;
+  predictedState(2) = curState(2) + curState(5) * dt;
+  predictedState(3) = curState(3) + rotAccel.x * dt;
+  predictedState(4) = curState(4) + rotAccel.y * dt;
+  predictedState(5) = curState(5) + (rotAccel.z - CONST_GRAVITY) * dt;
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
@@ -188,7 +196,21 @@ MatrixXf QuadEstimatorEKF::GetRbgPrime(float roll, float pitch, float yaw)
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
 
+  const float cosRoll = cos(roll);
+  const float cosPitch = cos(pitch);
+  const float cosYaw = cos(yaw);
 
+  const float sinRoll = sin(roll);
+  const float sinPitch = sin(pitch);
+  const float sinYaw = sin(yaw);
+
+  RbgPrime(0, 0) = - cosPitch * sinYaw;
+  RbgPrime(0, 1) = - sinRoll * sinPitch * sinYaw - cosRoll * cosYaw;
+  RbgPrime(0, 2) = - cosRoll * sinPitch * sinYaw + sinRoll * cosYaw;
+  RbgPrime(1, 0) = cosPitch * cosYaw;
+  RbgPrime(1, 1) = sinRoll * sinPitch * cosYaw - cosRoll * sinYaw;
+  RbgPrime(1, 2) = cosRoll * sinPitch * cosYaw + sinRoll * sinYaw;
+  
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
   return RbgPrime;
@@ -234,6 +256,20 @@ void QuadEstimatorEKF::Predict(float dt, V3F accel, V3F gyro)
 
   ////////////////////////////// BEGIN STUDENT CODE ///////////////////////////
 
+  VectorXf lastCol(3);
+  lastCol(0) = accel.x * dt;
+  lastCol(1) = accel.y * dt;
+  lastCol(2) = accel.z * dt;
+  lastCol = RbgPrime * lastCol;
+
+  gPrime(0, 3) = dt;
+  gPrime(1, 4) = dt;
+  gPrime(2, 5) = dt;
+  gPrime(3, 6) = lastCol(0);
+  gPrime(4, 6) = lastCol(1);
+  gPrime(5, 6) = lastCol(2);
+
+  ekfCov = gPrime  * ekfCov * gPrime.transpose() + Q;
 
   /////////////////////////////// END STUDENT CODE ////////////////////////////
 
